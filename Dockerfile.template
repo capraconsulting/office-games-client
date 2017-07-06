@@ -1,0 +1,23 @@
+# base-image for python on any machine using a template variable,
+FROM resin/%%RESIN_MACHINE_NAME%%-python:3.6
+
+RUN apt-get update && apt-get install -yq \
+    libusb-1.0-0-dev libudev-dev
+
+# Set our working directory
+WORKDIR /usr/src/app
+
+# Copy requirements.txt first for better cache on later pushes
+COPY ./requirements.txt /requirements.txt
+
+# pip install python deps from requirements.txt on the resin.io build server
+RUN pip install -r /requirements.txt
+
+# This will copy all files in our root to the working  directory in the container
+COPY . ./
+
+# switch on systemd init system in container
+ENV INITSYSTEM on
+
+# main.py will run when container starts up on the device
+CMD ["python","run.py"]
