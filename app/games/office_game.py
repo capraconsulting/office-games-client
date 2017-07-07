@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class OfficeGame:
     def __init__(self, game_name, game_version, min_max_card_count=2):
-        self.core_version = '0.1.0'
+        self.core_version = '0.1.1'
         self.game_name = game_name
         self.game_version = game_version
         self.game_slug = slugify(game_name)
@@ -232,7 +232,7 @@ class OfficeGame:
         self.get_current_session().start()
 
         # Set the start time of the current session in remote
-        self._get_db().child('current_session').set({
+        self._get_db().child('current_session').update({
             'session_started': self.get_current_session().start_time.isoformat()
         })
 

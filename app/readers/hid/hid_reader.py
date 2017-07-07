@@ -88,9 +88,11 @@ class HIDReader:
         """Start reader thread"""
         self._reader_alive = True
         # start hid->console thread
-        self.receiver_thread = threading.Thread(target=self.reader, name='rx')
-        self.receiver_thread.daemon = True
-        self.receiver_thread.start()
+        self.reader()
+        # TODO: Enable threading when stable
+        # self.receiver_thread = threading.Thread(target=self.reader, name='rx')
+        # self.receiver_thread.daemon = True
+        # self.receiver_thread.start()
 
     def _stop_reader(self):
         """Stop reader thread only, wait for clean exit of thread"""

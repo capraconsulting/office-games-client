@@ -58,7 +58,7 @@ class GameSession:
         return simplified_players
 
     def get_player_join_time(self, player):
-        return self.join_times[player.player.get_slack_user_id()]
+        return self.join_times[player.get_slack_user_id()]
 
     def has_all_needed_players(self):
         return len(self.players) == self.min_max_card_count

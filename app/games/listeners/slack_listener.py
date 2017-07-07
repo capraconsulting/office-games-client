@@ -13,13 +13,13 @@ class SlackListener(GameListener):
     def _send_message_to_slack(self, message, channel=SLACK_CHANNEL, attachments=None):
         if attachments is not None:
             result = self.game.slack.chat.post_message(
-                channel=SLACK_DEV_CHANNEL,
+                channel=SLACK_CHANNEL,
                 username=SLACK_USERNAME,
                 attachments=attachments
             )
         else:
             result = self.game.slack.chat.post_message(
-                channel=SLACK_DEV_CHANNEL,
+                channel=SLACK_CHANNEL,
                 username=SLACK_USERNAME,
                 text=message
             )
