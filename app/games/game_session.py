@@ -49,7 +49,12 @@ class GameSession:
     def get_players_simplified(self):
         simplified_players = {}
         for player in self.players:
-            simplified_players[player.get_card().get_uid()] = player.to_simplified_object()
+            simplified_players[player.get_card().get_uid()] = {
+                **player.to_simplified_object(),
+                **{
+                    'join_time': self.get_player_join_time(player).isoformat()
+                }
+            }
         return simplified_players
 
     def get_player_join_time(self, player):
