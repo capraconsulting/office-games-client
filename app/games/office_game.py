@@ -231,10 +231,9 @@ class OfficeGame:
     def start_session(self):
         self.get_current_session().start()
 
-        # Set the current session in Firebase as well
+        # Set the start time of the current session in remote
         self._get_db().child('current_session').set({
-            'session_started': self.get_current_session().start_time.isoformat(),
-            'players': self.get_current_session().get_players_simplified()
+            'session_started': self.get_current_session().start_time.isoformat()
         })
 
         # Send a notification to listeners
@@ -370,6 +369,11 @@ class OfficeGame:
 
             # Add player to the session
             self.get_current_session().add_player(player)
+
+            # Update the current session in Firebase as well
+            self._get_db().child('current_session').set({
+                'players': self.get_current_session().get_players_simplified()
+            })
 
             # Send a notification to listeners
             for game_listener in self.game_listeners:
