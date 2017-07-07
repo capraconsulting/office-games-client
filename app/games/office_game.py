@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class OfficeGame:
     def __init__(self, game_name, game_version, min_max_card_count=2):
-        self.core_version = '0.1.1'
+        self.core_version = '0.1.2'
         self.game_name = game_name
         self.game_version = game_version
         self.game_slug = slugify(game_name)
@@ -51,12 +51,13 @@ class OfficeGame:
         if SLACK_MESSAGES_ENABLED:
             self.add_game_listener(SlackListener(self))
 
-        remote_current_session = self.get_current_remote_session()
-        if remote_current_session is not None:
+        # TODO: get remote session
+        # remote_current_session = self.get_current_remote_session()
+        # if remote_current_session is not None:
             # TODO: isoformat -> datetime for session_started?
-            self.get_current_session().set_start_time(remote_current_session['session_started'])
-            for simplified_player in remote_current_session['players']:
-                self.get_current_session().add_player(GamePlayer.from_simplified_object(simplified_player))
+        #    self.get_current_session().set_start_time(remote_current_session['session_started'])
+        #    for simplified_player in remote_current_session['players']:
+        #        self.get_current_session().add_player(GamePlayer.from_simplified_object(simplified_player))
 
         # Send a notification to listeners
         for game_listener in self.game_listeners:
@@ -199,7 +200,7 @@ class OfficeGame:
             new_player = {
                 'slack_username': slack_user_response.body['user']['name'],
                 'slack_first_name': slack_profile['first_name'],
-                'slack_avatar_url': slack_profile['image_512'],
+                'slack_avatar_url': slack_profile['image_512'] if 'image_512' in slack_profile else None,
                 'cards': {
                     card.get_uid(): True
                 }
@@ -346,7 +347,7 @@ class OfficeGame:
                     # A new card tried to register whilst there was an active sessions
                     # Send a notification to listeners
                     for game_listener in self.game_listeners:
-                        game_listener.on_existing_active_session(player)
+                        game_listener.on_existing_active_session(player, card)
                     return
                 else:
                     # We have a new card, create a new session
