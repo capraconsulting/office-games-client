@@ -265,13 +265,13 @@ class OfficeGame:
             'session_started': self.get_current_session().start_time.isoformat(),
             'session_ended': datetime.now().isoformat(),
             'winner': {
-                'card_uid': winner_player.get_card().get_uid(),
+                'slack_user_id': winner_player.get_slack_user_id(),
                 'rating_before': winner_player.get_rating(),
                 'rating_after': winner_rating,
                 'rating_delta': winner_rating - winner_player.get_rating()
             },
             'loser': {
-                'card_uid': loser_player.get_card().get_uid(),
+                'slack_user_id': loser_player.get_slack_user_id(),
                 'rating_before': loser_player.get_rating(),
                 'rating_after': loser_rating,
                 'rating_delta': loser_rating - loser_player.get_rating()
