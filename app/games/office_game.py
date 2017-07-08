@@ -16,6 +16,7 @@ from app.settings import (FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_AUTH_
                           FIREBASE_TOKEN_URI, FIREBASE_TYPE, GAME_CARD_REGISTRATION_TIMEOUT, GAME_SESSION_TIME,
                           GAME_START_TIME_BUFFER, SLACK_MESSAGES_ENABLED, SLACK_TOKEN)
 from app.utils.elo_rating import calculate_new_rating
+from app.utils.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class OfficeGame:
             int(pending_registration['timestamp'] / 1000)
         )
 
-        if (datetime.now() - registration_datetime).total_seconds() > GAME_CARD_REGISTRATION_TIMEOUT:
+        if (utc_now() - registration_datetime).total_seconds() > GAME_CARD_REGISTRATION_TIMEOUT:
             # Send a notification to listeners
             for game_listener in self.game_listeners:
                 game_listener.on_pending_card_registration_timeout(pending_registration, card)
@@ -263,7 +264,7 @@ class OfficeGame:
         # Push the current session (which has ended) to the list of sessions in Firebase
         results = self._get_db().child('sessions').push({
             'session_started': self.get_current_session().start_time.isoformat(),
-            'session_ended': datetime.now().isoformat(),
+            'session_ended': utc_now().isoformat(),
             'winner': {
                 'slack_user_id': winner_player.get_slack_user_id(),
                 'rating_before': winner_player.get_rating(),

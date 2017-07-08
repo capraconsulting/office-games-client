@@ -5,6 +5,7 @@ import serial
 from app.readers.rfid.cards.em4200 import ID_TYPE as ID_TYPE_EM4200
 from app.readers.rfid.cards.em4200 import EM4200Card
 from app.readers.serial.serial_reader import SerialReader
+from app.utils.time import utc_now
 
 
 class RFIDReader(SerialReader):
@@ -21,7 +22,7 @@ class RFIDReader(SerialReader):
                     lines = self.reader_buffer_string.split('\r\n')
                     self.reader_last_received = lines[-2]
                     self.reader_buffer_string = lines[-1]
-                    self.reader_last_read_time = datetime.now()
+                    self.reader_last_read_time = utc_now()
                     if self.reader_last_received[:1] == ID_TYPE_EM4200:
                         for reader_listener in self.reader_listeners:
                             reader_listener.handle_card_read(EM4200Card(self.reader_last_received[1:]))

@@ -6,6 +6,7 @@ from serial.tools import list_ports
 
 from app.readers.exceptions import ReaderCouldNotConnect, ReaderNotFound
 from app.readers.port import Port
+from app.utils.time import utc_now
 
 
 class SerialReader:
@@ -56,7 +57,7 @@ class SerialReader:
         self.reader_listeners = []
         self.reader_buffer_string = ''
         self.reader_last_received = None
-        self.reader_last_read_time = datetime.now()
+        self.reader_last_read_time = utc_now()
 
         try:
             self.serial_instance = serial.serial_for_url(
@@ -105,4 +106,4 @@ class SerialReader:
         raise NotImplementedError
 
     def _should_read(self):
-        return (datetime.now() - self.reader_last_read_time).total_seconds() > self.read_delay
+        return (utc_now() - self.reader_last_read_time).total_seconds() > self.read_delay

@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 from app.settings import GAME_PLAYER_REGISTRATION_TIMEOUT
+from app.utils.time import utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class GameSession:
 
     def add_player(self, player):
         self.players.append(player)
-        self.join_times[player.get_slack_user_id()] = datetime.now()
+        self.join_times[player.get_slack_user_id()] = utc_now()
 
     def remove_player(self, player):
         self.players.remove(player)
@@ -64,7 +65,7 @@ class GameSession:
         return len(self.players) == self.min_max_card_count
 
     def get_seconds_elapsed(self):
-        return (datetime.now() - self.start_time).total_seconds()
+        return (utc_now() - self.start_time).total_seconds()
 
     def is_session_card(self, card):
         for player in self.players:
@@ -82,10 +83,10 @@ class GameSession:
         if len(self.players) == 0 or self.has_all_needed_players():
             return False
         for player in self.players:
-            if (datetime.now() - self.get_player_join_time(player)).total_seconds() > GAME_PLAYER_REGISTRATION_TIMEOUT:
+            if (utc_now() - self.get_player_join_time(player)).total_seconds() > GAME_PLAYER_REGISTRATION_TIMEOUT:
                 return True
         return False
 
     def start(self):
         # TODO: beep 3 times with buzzer
-        self.start_time = datetime.now()
+        self.start_time = utc_now()

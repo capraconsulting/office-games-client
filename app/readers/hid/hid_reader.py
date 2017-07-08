@@ -8,6 +8,7 @@ from evdev import InputDevice, categorize, ecodes
 from app.readers.exceptions import ReaderNotFound
 from app.readers.nfc.cards.mifare_classic import MifareClassicCard
 from app.readers.port import Port
+from app.utils.time import utc_now
 
 SCAN_CODES = {
     # Scancode: ASCIICode
@@ -64,7 +65,7 @@ class HIDReader:
         for i in range(len(hid_ports)):
             self.reader_buffer_strings.append('')
             self.reader_last_received.append(None)
-            self.reader_last_read_time.append(datetime.now())
+            self.reader_last_read_time.append(utc_now())
 
     def add_read_listener(self, listener):
         self.reader_listeners.append(listener)
@@ -129,4 +130,4 @@ class HIDReader:
             raise
 
     def _should_read(self, reader_index):
-        return (datetime.now() - self.reader_last_read_time[reader_index]).total_seconds() > self.read_delay
+        return (utc_now() - self.reader_last_read_time[reader_index]).total_seconds() > self.read_delay
