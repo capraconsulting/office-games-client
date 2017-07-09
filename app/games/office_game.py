@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class OfficeGame:
     def __init__(self, game_name, game_version, min_max_card_count=2):
-        self.core_version = '0.1.3'
+        self.core_version = '0.1.4'
         self.game_name = game_name
         self.game_version = game_version
         self.game_slug = slugify(game_name)
@@ -154,8 +154,7 @@ class OfficeGame:
         if existing_card is None:
             # Card does not exist, insert the card
             self.firebase.database().child('cards').child(card.get_uid()).set({
-                'slack_user_id': slack_user_id,
-                'sessions': {}
+                'slack_user_id': slack_user_id
             })
         else:
             # Card exists in the database
@@ -288,12 +287,13 @@ class OfficeGame:
                 is_winner = False
                 new_rating = loser_rating
             self.firebase.database()\
-                .child('cards')\
-                .child(player.get_card().get_uid())\
+                .child('players')\
+                .child(player.get_slack_user_id())\
                 .child('sessions')\
                 .child(self.game_slug)\
                 .child(results['name'])\
                 .set({
+                    'card_uid': player.get_card().get_uid(),
                     'new_rating': new_rating,
                     'rating_delta': new_rating - player.get_rating(),
                     'winner': is_winner
