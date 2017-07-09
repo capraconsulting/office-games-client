@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 
 from app.settings import GAME_PLAYER_REGISTRATION_TIMEOUT
 from app.utils.time import utc_now

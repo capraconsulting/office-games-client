@@ -1,3 +1,5 @@
+from trueskill import Rating
+
 from app.readers.utils.card import NFC_CARD, Card
 
 
@@ -9,7 +11,8 @@ class GamePlayer:
             slack_username=None,
             slack_first_name=None,
             slack_avatar_url=None,
-            rating=1200,
+            trueskill_rating=Rating(),
+            elo_rating=1200,
             total_games=0,
             games_lost=0,
             games_won=0
@@ -19,7 +22,8 @@ class GamePlayer:
         self.slack_first_name = slack_first_name
         self.slack_username = slack_username
         self.slack_avatar_url = slack_avatar_url
-        self.rating = rating
+        self.trueskill_rating = trueskill_rating
+        self.elo_rating = elo_rating
         self.total_games = total_games
         self.games_lost = games_lost
         self.games_won = games_won
@@ -33,7 +37,8 @@ class GamePlayer:
                    f'slack_first_name={self.slack_first_name} ' \
                    f'slack_username={self.slack_username} ' \
                    f'slack_avatar_url={self.slack_avatar_url} ' \
-                   f'rating={self.rating} ' \
+                   f'trueskill_rating={self.trueskill_rating} ' \
+                   f'elo_rating={self.elo_rating} ' \
                    f'total_games={self.total_games} ' \
                    f'games_won={self.games_won} ' \
                    f'games_lost={self.games_lost}' \
@@ -73,17 +78,23 @@ class GamePlayer:
     def set_slack_avatar_url(self, slack_avatar_url):
         self.slack_avatar_url = slack_avatar_url
 
-    def get_rating(self):
-        return self.rating
+    def get_trueskill_rating(self):
+        return self.trueskill_rating
 
-    def set_rating(self, rating):
-        self.rating = rating
+    def set_trueskill_rating(self, trueskill_rating):
+        self.trueskill_rating = trueskill_rating
 
-    def increase_rating(self, amount):
-        self.rating += amount
+    def get_elo_rating(self):
+        return self.elo_rating
 
-    def decraese_rating(self, amount):
-        self.rating -= amount
+    def set_elo_rating(self, elo_rating):
+        self.elo_rating = elo_rating
+
+    def increase_elo_rating(self, amount):
+        self.elo_rating += amount
+
+    def decraese_elo_rating(self, amount):
+        self.elo_rating -= amount
 
     def get_total_games(self):
         return self.total_games
@@ -119,7 +130,8 @@ class GamePlayer:
                 'slack_username': self.slack_username,
                 'slack_first_name': self.slack_first_name,
                 'slack_avatar_url': self.slack_avatar_url,
-                'rating': self.rating,
+                'trueskill_rating': self.trueskill_rating,
+                'elo_rating': self.elo_rating,
                 'total_games': self.total_games,
                 'games_won': self.games_won,
                 'games_lost': self.games_lost
@@ -139,7 +151,9 @@ class GamePlayer:
             slack_username=simplified_player['slack_username'],
             slack_first_name=simplified_player['slack_first_name'],
             slack_avatar_url=simplified_player['slack_avatar_url'],
-            rating=simplified_player['rating'],
+            trueskill_rating=Rating(simplified_player['trueskill_rating']),
+            elo_rating=simplified_player['rating'] if 'rating' in
+                                                      simplified_player else simplified_player['elo_rating'],
             total_games=simplified_player['total_games'],
             games_won=simplified_player['games_won'],
             games_lost=simplified_player['games_lost']

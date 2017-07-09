@@ -5,6 +5,7 @@ import pyrebase
 import pytz
 from slacker import Slacker
 from slugify import slugify
+from trueskill import Rating, rate_1vs1
 
 from app.games.exceptions import CardExists, UnregisteredCardException
 from app.games.game_player import GamePlayer
@@ -123,7 +124,12 @@ class OfficeGame:
 
         if existing_player_statistics is not None:
             # The player has statistics stored in the database, add it to the GamePlayer object
-            game_player.set_rating(existing_player_statistics['rating'])
+            if 'rating' in existing_player_statistics:
+                game_player.set_elo_rating(existing_player_statistics['rating'])
+            else:
+                game_player.set_elo_rating(existing_player_statistics['elo_rating'])
+
+            game_player.set_trueskill_rating(Rating(existing_player_statistics['trueskill_rating']))
             game_player.set_total_games(existing_player_statistics['total_games'])
             game_player.set_games_won(existing_player_statistics['games_lost'])
             game_player.set_games_lost(existing_player_statistics['games_won'])
@@ -220,7 +226,8 @@ class OfficeGame:
 
             # Add the player to the player statistics of the current game_slug
             self._get_db().child('player_statistics').child(slack_user_id).set({
-                'rating': 1200,
+                'trueskill_rating': Rating().mu,
+                'elo_rating': 1200,
                 'total_games': 0,
                 'games_won': 0,
                 'games_lost': 0
@@ -250,15 +257,20 @@ class OfficeGame:
         loser_player = self.get_current_session().get_player(0)
 
         # Calculate the players new rating
-        winner_rating = calculate_new_rating(
-            player_rating=winner_player.get_rating(),
-            opponent_rating=loser_player.get_rating(),
+        winner_elo_rating = calculate_new_rating(
+            player_rating=winner_player.get_elo_rating(),
+            opponent_rating=loser_player.get_elo_rating(),
             player_won=True
         )
-        loser_rating = calculate_new_rating(
-            player_rating=loser_player.get_rating(),
-            opponent_rating=winner_player.get_rating(),
+        loser_elo_rating = calculate_new_rating(
+            player_rating=loser_player.get_elo_rating(),
+            opponent_rating=winner_player.get_elo_rating(),
             player_won=False
+        )
+
+        winner_trueskill_rating, loser_trueskill_rating = rate_1vs1(
+            winner_player.get_trueskill_rating(),
+            loser_player.get_trueskill_rating()
         )
 
         # Push the current session (which has ended) to the list of sessions in Firebase
@@ -267,15 +279,29 @@ class OfficeGame:
             'session_ended': utc_now().isoformat(),
             'winner': {
                 'slack_user_id': winner_player.get_slack_user_id(),
-                'rating_before': winner_player.get_rating(),
-                'rating_after': winner_rating,
-                'rating_delta': winner_rating - winner_player.get_rating()
+                'trueskill_rating': {
+                    'before': winner_player.get_trueskill_rating().mu,
+                    'after': winner_trueskill_rating.mu,
+                    'delta': winner_trueskill_rating.mu - winner_player.get_trueskill_rating().mu
+                },
+                'elo_rating': {
+                    'before': winner_player.get_elo_rating(),
+                    'after': winner_elo_rating,
+                    'delta': winner_elo_rating - winner_player.get_elo_rating()
+                }
             },
             'loser': {
                 'slack_user_id': loser_player.get_slack_user_id(),
-                'rating_before': loser_player.get_rating(),
-                'rating_after': loser_rating,
-                'rating_delta': loser_rating - loser_player.get_rating()
+                'trueskill_rating': {
+                    'before': loser_player.get_trueskill_rating().mu,
+                    'after': loser_trueskill_rating.mu,
+                    'delta': loser_trueskill_rating.mu - loser_player.get_trueskill_rating().mu
+                },
+                'elo_rating': {
+                    'before': loser_player.get_elo_rating(),
+                    'after': loser_elo_rating,
+                    'delta': loser_elo_rating - loser_player.get_elo_rating()
+                }
             }
         })
 
@@ -283,10 +309,12 @@ class OfficeGame:
         for player in all_players:
             if player.get_card().get_uid() == winner_player.get_card().get_uid():
                 is_winner = True
-                new_rating = winner_rating
+                new_elo_rating = winner_elo_rating
+                new_trueskill_rating = winner_trueskill_rating
             else:
                 is_winner = False
-                new_rating = loser_rating
+                new_elo_rating = loser_elo_rating
+                new_trueskill_rating = loser_trueskill_rating
             self.firebase.database()\
                 .child('players')\
                 .child(player.get_slack_user_id())\
@@ -295,8 +323,10 @@ class OfficeGame:
                 .child(results['name'])\
                 .set({
                     'card_uid': player.get_card().get_uid(),
-                    'new_rating': new_rating,
-                    'rating_delta': new_rating - player.get_rating(),
+                    'new_elo_rating': new_elo_rating,
+                    'new_trueskill_rating': new_trueskill_rating.mu,
+                    'elo_rating_delta': new_elo_rating - player.get_elo_rating(),
+                    'trueskill_rating_delta': new_trueskill_rating.mu - player.get_trueskill_rating().mu,
                     'winner': is_winner
                 })
 
@@ -307,7 +337,8 @@ class OfficeGame:
 
             # Set the player statistics
             self._get_db().child('player_statistics').child(player.get_slack_user_id()).set({
-                'rating': new_rating,
+                'elo_rating': new_elo_rating,
+                'trueskill_rating': new_trueskill_rating.mu,
                 'total_games': existing_player_statistics['total_games'] + 1,
                 'games_won': existing_player_statistics['games_won'] + (1 if is_winner else 0),
                 'games_lost': existing_player_statistics['games_lost'] + (1 if not is_winner else 0)
@@ -317,9 +348,9 @@ class OfficeGame:
         for game_listener in self.game_listeners:
             game_listener.on_end_session(
                 winner_player=winner_player,
-                winner_new_rating=winner_rating,
+                winner_new_rating=winner_rating.mu,
                 loser_player=loser_player,
-                loser_new_rating=loser_rating
+                loser_new_rating=loser_rating.mu
             )
 
         # Create a new session placeholder (it doesn't start until we call .start())
