@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 import pyrebase
+import pytz
 from slacker import Slacker
 from slugify import slugify
 
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class OfficeGame:
     def __init__(self, game_name, game_version, min_max_card_count=2):
-        self.core_version = '0.1.4'
+        self.core_version = '0.1.5'
         self.game_name = game_name
         self.game_version = game_version
         self.game_slug = slugify(game_name)
@@ -78,7 +79,7 @@ class OfficeGame:
 
         registration_datetime = datetime.fromtimestamp(
             int(pending_registration['timestamp'] / 1000)
-        )
+        ).replace(tzinfo=pytz.utc)
 
         if (utc_now() - registration_datetime).total_seconds() > GAME_CARD_REGISTRATION_TIMEOUT:
             # Send a notification to listeners
