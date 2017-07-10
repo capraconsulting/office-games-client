@@ -1,7 +1,6 @@
 import logging
 from datetime import datetime
 
-import pyrebase
 import pytz
 from slacker import Slacker
 from slugify import slugify
@@ -12,12 +11,10 @@ from app.games.game_player import GamePlayer
 from app.games.game_session import GameSession
 from app.games.listeners.console_listener import ConsoleListener
 from app.games.listeners.slack_listener import SlackListener
-from app.settings import (FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
-                          FIREBASE_AUTH_URI, FIREBASE_CLIENT_EMAIL, FIREBASE_CLIENT_ID, FIREBASE_CLIENT_X509_CERT_URL,
-                          FIREBASE_DATABASE_URL, FIREBASE_PRIVATE_KEY, FIREBASE_PRIVATE_KEY_ID, FIREBASE_STORAGE_BUCKET,
-                          FIREBASE_TOKEN_URI, FIREBASE_TYPE, GAME_CARD_REGISTRATION_TIMEOUT, GAME_SESSION_TIME,
+from app.settings import (GAME_CARD_REGISTRATION_TIMEOUT, GAME_SESSION_TIME,
                           GAME_START_TIME_BUFFER, SLACK_MESSAGES_ENABLED, SLACK_TOKEN)
 from app.utils.elo_rating import calculate_new_rating
+from app.utils.firebase import get_firebase
 from app.utils.time import utc_now
 
 logger = logging.getLogger(__name__)
@@ -25,28 +22,12 @@ logger = logging.getLogger(__name__)
 
 class OfficeGame:
     def __init__(self, game_name, game_version, min_max_card_count=2):
-        self.core_version = '0.1.5'
+        self.core_version = '0.2.0'
         self.game_name = game_name
         self.game_version = game_version
         self.game_slug = slugify(game_name)
         self.game_listeners = []
-        self.firebase = pyrebase.initialize_app({
-            'apiKey': FIREBASE_API_KEY,
-            'databaseURL': FIREBASE_DATABASE_URL,
-            'storageBucket': FIREBASE_STORAGE_BUCKET,
-            'authDomain': FIREBASE_AUTH_DOMAIN,
-            'serviceAccount': {
-                'type': FIREBASE_TYPE,
-                'private_key_id': FIREBASE_PRIVATE_KEY_ID,
-                'private_key': FIREBASE_PRIVATE_KEY.replace('\\n', '\n'),
-                'client_email': FIREBASE_CLIENT_EMAIL,
-                'client_id': FIREBASE_CLIENT_ID,
-                'auth_uri': FIREBASE_AUTH_URI,
-                'token_uri': FIREBASE_TOKEN_URI,
-                'auth_provider_x509_cert_url': FIREBASE_AUTH_PROVIDER_X509_CERT_URL,
-                'client_x509_cert_url': FIREBASE_CLIENT_X509_CERT_URL
-            }
-        })
+        self.firebase = get_firebase()
         self.min_max_card_count = min_max_card_count
         self.current_session = GameSession(self.min_max_card_count)
         self.slack = Slacker(SLACK_TOKEN)
@@ -124,12 +105,12 @@ class OfficeGame:
 
         if existing_player_statistics is not None:
             # The player has statistics stored in the database, add it to the GamePlayer object
-            if 'rating' in existing_player_statistics:
-                game_player.set_elo_rating(existing_player_statistics['rating'])
-            else:
-                game_player.set_elo_rating(existing_player_statistics['elo_rating'])
+            game_player.set_elo_rating(existing_player_statistics['elo_rating'])
 
-            game_player.set_trueskill_rating(Rating(existing_player_statistics['trueskill_rating']))
+            game_player.set_trueskill_rating(Rating(
+                mu=existing_player_statistics['trueskill_rating']['mu'],
+                sigma=existing_player_statistics['trueskill_rating']['sigma']
+            ))
             game_player.set_total_games(existing_player_statistics['total_games'])
             game_player.set_games_won(existing_player_statistics['games_lost'])
             game_player.set_games_lost(existing_player_statistics['games_won'])
@@ -161,7 +142,8 @@ class OfficeGame:
         if existing_card is None:
             # Card does not exist, insert the card
             self.firebase.database().child('cards').child(card.get_uid()).set({
-                'slack_user_id': slack_user_id
+                'slack_user_id': slack_user_id,
+                'registration_date': utc_now().isoformat()
             })
         else:
             # Card exists in the database
@@ -208,6 +190,7 @@ class OfficeGame:
                 'slack_username': slack_user_response.body['user']['name'],
                 'slack_first_name': slack_profile['first_name'],
                 'slack_avatar_url': slack_profile['image_512'] if 'image_512' in slack_profile else None,
+                'registration_date': utc_now().isoformat(),
                 'cards': {
                     card.get_uid(): True
                 }
@@ -226,7 +209,10 @@ class OfficeGame:
 
             # Add the player to the player statistics of the current game_slug
             self._get_db().child('player_statistics').child(slack_user_id).set({
-                'trueskill_rating': Rating().mu,
+                'trueskill_rating': {
+                    'mu': Rating().mu,
+                    'sigma': Rating().sigma,
+                },
                 'elo_rating': 1200,
                 'total_games': 0,
                 'games_won': 0,
@@ -280,9 +266,16 @@ class OfficeGame:
             'winner': {
                 'slack_user_id': winner_player.get_slack_user_id(),
                 'trueskill_rating': {
-                    'before': winner_player.get_trueskill_rating().mu,
-                    'after': winner_trueskill_rating.mu,
-                    'delta': winner_trueskill_rating.mu - winner_player.get_trueskill_rating().mu
+                    'mu': {
+                        'before': winner_player.get_trueskill_rating().mu,
+                        'after': winner_trueskill_rating.mu,
+                        'delta': winner_trueskill_rating.mu - winner_player.get_trueskill_rating().mu
+                    },
+                    'sigma': {
+                        'before': winner_player.get_trueskill_rating().sigma,
+                        'after': winner_trueskill_rating.sigma,
+                        'delta': winner_trueskill_rating.sigma - winner_player.get_trueskill_rating().sigma
+                    }
                 },
                 'elo_rating': {
                     'before': winner_player.get_elo_rating(),
@@ -293,9 +286,16 @@ class OfficeGame:
             'loser': {
                 'slack_user_id': loser_player.get_slack_user_id(),
                 'trueskill_rating': {
-                    'before': loser_player.get_trueskill_rating().mu,
-                    'after': loser_trueskill_rating.mu,
-                    'delta': loser_trueskill_rating.mu - loser_player.get_trueskill_rating().mu
+                    'mu': {
+                        'before': loser_player.get_trueskill_rating().mu,
+                        'after': loser_trueskill_rating.mu,
+                        'delta': loser_trueskill_rating.mu - loser_player.get_trueskill_rating().mu
+                    },
+                    'sigma': {
+                        'before': loser_player.get_trueskill_rating().sigma,
+                        'after': loser_trueskill_rating.sigma,
+                        'delta': loser_trueskill_rating.sigma - loser_player.get_trueskill_rating().sigma
+                    }
                 },
                 'elo_rating': {
                     'before': loser_player.get_elo_rating(),
@@ -315,6 +315,7 @@ class OfficeGame:
                 is_winner = False
                 new_elo_rating = loser_elo_rating
                 new_trueskill_rating = loser_trueskill_rating
+            # FIXME: rewrite in firebase
             self.firebase.database()\
                 .child('players')\
                 .child(player.get_slack_user_id())\
@@ -323,11 +324,21 @@ class OfficeGame:
                 .child(results['name'])\
                 .set({
                     'card_uid': player.get_card().get_uid(),
-                    'new_elo_rating': new_elo_rating,
-                    'new_trueskill_rating': new_trueskill_rating.mu,
-                    'elo_rating_delta': new_elo_rating - player.get_elo_rating(),
-                    'trueskill_rating_delta': new_trueskill_rating.mu - player.get_trueskill_rating().mu,
-                    'winner': is_winner
+                    'winner': is_winner,
+                    'elo_rating': {
+                        'new': new_elo_rating,
+                        'delta': new_elo_rating - player.get_elo_rating()
+                    },
+                    'trueskill_rating': {
+                        'mu': {
+                            'new': new_trueskill_rating.mu,
+                            'delta': new_trueskill_rating.mu - player.get_trueskill_rating().mu
+                        },
+                        'sigma': {
+                            'new': new_trueskill_rating.sigma,
+                            'delta': new_trueskill_rating.sigma - player.get_trueskill_rating().sigma
+                        }
+                    }
                 })
 
             existing_player_statistics = self._get_db()\
@@ -338,7 +349,10 @@ class OfficeGame:
             # Set the player statistics
             self._get_db().child('player_statistics').child(player.get_slack_user_id()).set({
                 'elo_rating': new_elo_rating,
-                'trueskill_rating': new_trueskill_rating.mu,
+                'trueskill_rating': {
+                    'mu': new_trueskill_rating.mu,
+                    'sigma': new_trueskill_rating.sigma
+                },
                 'total_games': existing_player_statistics['total_games'] + 1,
                 'games_won': existing_player_statistics['games_won'] + (1 if is_winner else 0),
                 'games_lost': existing_player_statistics['games_lost'] + (1 if not is_winner else 0)

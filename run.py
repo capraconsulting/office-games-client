@@ -1,26 +1,40 @@
 #!/usr/bin/python
-import logging
+import sys
+import os
+from clint.arguments import Args
 
-from app.games.implementations.ping_pong import PingPongGame
-from app.settings import READER_VENDOR_ID, READER_PRODUCT_ID
-from app.readers.hid.hid_reader import HIDReader
-from app.readers.reader_listener import ReaderListener
+from commands.backup import backup
+from commands.check_player_statistics import check_player_statistics
+from commands.rewrite_firebase import rewrite_firebase
+from commands.start import start
 
-
-logging.basicConfig(level=logging.DEBUG)
-
-game = PingPongGame()
-
-
-class CapraNFCReader(ReaderListener):
-    def handle_card_read(self, card):
-        game.register_card(card)
-
-    def handle_data(self, message):
-        pass
+AVAILABLE_COMMANDS = [
+    'backup',
+    'check_player_statistics',
+    'rewrite_firebase',
+    'recalculate_player_rating',
+    'start'
+]
 
 
-ports = HIDReader.find_readers(READER_VENDOR_ID, READER_PRODUCT_ID, None)
-reader = HIDReader(ports)
-reader.add_read_listener(CapraNFCReader())
-reader.connect()
+if __name__ == '__main__':
+    # TODO: Get from ENV variable
+    game_slug = 'ping-pong'
+    sys.path.insert(0, os.path.abspath('..'))
+    args = Args()
+    if len(args) == 0 or args.all[0] not in AVAILABLE_COMMANDS:
+        print(f'Unknown command. Available commands: {", ".join(AVAILABLE_COMMANDS)}')
+        sys.exit(1)
+
+    command = args.all[0].lower()
+
+    if command == 'backup':
+        backup()
+    elif command == 'rewrite_firebase':
+        rewrite_firebase(game_slug)
+    elif command == 'check_player_statistics':
+        check_player_statistics(game_slug)
+    elif command == 'start':
+        start(game_slug)
+
+    sys.exit(0)
