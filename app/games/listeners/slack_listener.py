@@ -64,7 +64,9 @@ class SlackListener(GameListener):
                 'fields': [
                     {
                         'title': f'Spiller #{ len(self.game.current_session.get_players()) }',
-                        'value': f'{player.to_slack_string()}\nRating: {player.get_rating()}',
+                        'value': f'{player.to_slack_string()}\n'
+                                 f'ELO Rating: {player.get_elo_rating()}\n'
+                                 f'Trueskill Rating: {player.get_trueskill_rating().mu}',
                         'short': False
                     }
                 ]
@@ -89,7 +91,9 @@ class SlackListener(GameListener):
         for i in range(len(players)):
             fields.append({
                 'title': f'Spiller #{i + 1}',
-                'value': f'{players[i].to_slack_string()}\nRating: {players[i].get_rating()}',
+                'value': f'{players[i].to_slack_string()}\n'
+                         f'ELO Rating: {players[i].get_elo_rating()}\n'
+                         f'Trueskill Rating: {players[i].get_trueskill_rating()}',
                 'short': True
             })
         self._send_message_to_slack(
@@ -103,7 +107,8 @@ class SlackListener(GameListener):
             }]
         )
 
-    def on_end_session(self, winner_player, winner_new_rating, loser_player, loser_new_rating):
+    def on_end_session(self, winner_player, winner_new_elo_rating, winner_new_trueskill_rating,
+                       loser_player, loser_new_elo_rating, loser_new_trueskill_rating):
         message = f'*{self.game.game_name}* - Spill ferdig'
         self._send_message_to_slack(
             message=message,
@@ -116,13 +121,19 @@ class SlackListener(GameListener):
                     {
                         'title': 'Vinner',
                         'value': f'{winner_player.to_slack_string()}\n'
-                                 f'Ny rating: {winner_new_rating} [+{winner_new_rating - winner_player.get_rating()}]',
+                                 f'Ny ELO rating: {winner_new_elo_rating} '
+                                 f'[+{winner_new_elo_rating - winner_player.get_elo_rating()}]\n'
+                                 f'Ny Trueskill rating: {winner_new_trueskill_rating.mu} '
+                                 f'[+{winner_new_trueskill_rating.mu - winner_player.get_trueskill_rating().mu}]',
                         'short': True
                     },
                     {
                         'title': 'Taper',
                         'value': f'{loser_player.to_slack_string()}\n'
-                                 f'Ny rating: {loser_new_rating} [-{loser_player.get_rating() - loser_new_rating}]',
+                                 f'Ny ELO rating: {loser_new_elo_rating} '
+                                 f'[-{loser_player.get_elo_rating() - loser_new_elo_rating}]\n'
+                                 f'Ny Trueskill rating: {loser_new_trueskill_rating.mu} '
+                                 f'[-{loser_player.get_trueskill_rating().mu - loser_new_trueskill_rating.mu}]',
                         'short': True
                     }
                 ]

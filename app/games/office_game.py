@@ -348,9 +348,11 @@ class OfficeGame:
         for game_listener in self.game_listeners:
             game_listener.on_end_session(
                 winner_player=winner_player,
-                winner_new_rating=winner_rating.mu,
+                winner_new_elo_rating=winner_elo_rating,
+                winner_new_trueskill_rating=winner_trueskill_rating,
                 loser_player=loser_player,
-                loser_new_rating=loser_rating.mu
+                loser_new_elo_rating=loser_elo_rating,
+                loser_new_trueskill_rating=loser_trueskill_rating
             )
 
         # Create a new session placeholder (it doesn't start until we call .start())

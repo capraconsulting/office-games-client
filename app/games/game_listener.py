@@ -26,7 +26,8 @@ class GameListener:
     def on_start_session(self, players):
         pass
 
-    def on_end_session(self, winner_player, winner_new_rating, loser_player, loser_new_rating):
+    def on_end_session(self, winner_player, winner_new_elo_rating, winner_new_trueskill_rating,
+                       loser_player, loser_new_elo_rating, loser_new_trueskill_rating):
         pass
 
     def on_session_timeout(self, session):

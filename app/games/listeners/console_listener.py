@@ -36,9 +36,11 @@ class ConsoleListener(GameListener):
     def on_start_session(self, players):
         logger.info(f'New "{self.game.get_name()}" session started with players: {players}')
 
-    def on_end_session(self, winner_player, winner_new_rating, loser_player, loser_new_rating):
-        logger.info(f'"{self.game.get_name()}" session ended. Winner: {winner_player} [{winner_new_rating}]. Loser: '
-                    f'{loser_player} [{loser_new_rating}]')
+    def on_end_session(self, winner_player, winner_new_elo_rating, winner_new_trueskill_rating,
+                       loser_player, loser_new_elo_rating, loser_new_trueskill_rating):
+        logger.info(f'"{self.game.get_name()}" session ended. '
+                    f'Winner: {winner_player} [{winner_new_elo_rating}] [{winner_new_trueskill_rating}]. '
+                    f'Loser: {loser_player} [{loser_new_elo_rating}] [{loser_new_trueskill_rating}]')
 
     def on_session_timeout(self, session):
         logger.info(f'Session time ran out. Starting a new session! Session that ran out: {session}')
