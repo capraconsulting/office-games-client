@@ -6,7 +6,6 @@ chardet==3.0.4
 evdev==0.7.0
 gcloud==0.17.0
 googleapis-common-protos==1.5.2
-hidapi==0.7.99.post20
 httplib2==0.10.3
 idna==2.5
 jws==0.1.3
