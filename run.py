@@ -5,13 +5,11 @@ from clint.arguments import Args
 
 from commands.backup import backup
 from commands.check_player_statistics import check_player_statistics
-from commands.rewrite_firebase import rewrite_firebase
 from commands.start import start
 
 AVAILABLE_COMMANDS = [
     'backup',
     'check_player_statistics',
-    'rewrite_firebase',
     'recalculate_player_rating',
     'start'
 ]
@@ -30,8 +28,6 @@ if __name__ == '__main__':
 
     if command == 'backup':
         backup()
-    elif command == 'rewrite_firebase':
-        rewrite_firebase(game_slug)
     elif command == 'check_player_statistics':
         check_player_statistics(game_slug)
     elif command == 'start':
