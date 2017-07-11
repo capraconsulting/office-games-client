@@ -11,7 +11,7 @@ url=$OG_VIEWER_URL
 default='https://capraconsulting.no'
 sudo matchbox-window-manager -use_titlebar no -use_cursor no &
 xte 'sleep 15' 'key F11'&
-python /usr/src/app/run.py &
+python /usr/src/app/run.py start &
 iceweasel ${url:-$default}
 unclutter -idle 0
 sleep 2s

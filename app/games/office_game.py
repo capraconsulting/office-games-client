@@ -4,7 +4,7 @@ from datetime import datetime
 import pytz
 from slacker import Slacker
 from slugify import slugify
-from trueskill import Rating, rate_1vs1
+from trueskill import Rating, rate_1vs1, quality_1vs1
 
 from app.games.exceptions import CardExists, UnregisteredCardException
 from app.games.game_player import GamePlayer
@@ -226,9 +226,15 @@ class OfficeGame:
     def start_session(self):
         self.get_current_session().start()
 
+        session_players = self.get_current_session().get_players()
+
         # Set the start time of the current session in remote
         self._get_db().child('current_session').update({
-            'session_started': self.get_current_session().start_time.isoformat()
+            'session_started': self.get_current_session().start_time.isoformat(),
+            'trueskill_quality': quality_1vs1(
+                session_players[0].get_trueskill_rating(),
+                session_players[1].get_trueskill_rating()
+            )
         })
 
         # Send a notification to listeners
@@ -263,6 +269,10 @@ class OfficeGame:
         results = self._get_db().child('sessions').push({
             'session_started': self.get_current_session().start_time.isoformat(),
             'session_ended': utc_now().isoformat(),
+            'trueskill_quality': quality_1vs1(
+                winner_player.get_trueskill_rating(),
+                loser_player.get_trueskill_rating()
+            ),
             'winner': {
                 'slack_user_id': winner_player.get_slack_user_id(),
                 'trueskill_rating': {
@@ -315,7 +325,6 @@ class OfficeGame:
                 is_winner = False
                 new_elo_rating = loser_elo_rating
                 new_trueskill_rating = loser_trueskill_rating
-            # FIXME: rewrite in firebase
             self.firebase.database()\
                 .child('players')\
                 .child(player.get_slack_user_id())\
