@@ -7,6 +7,12 @@ HOSTNAME=$(cat /etc/hostname)
 echo "127.0.1.1 $HOSTNAME" >> /etc/hosts
 hostname $HOSTNAME
 
+# start SSH
+# Start sshd if we don't use the init system
+if [ "$INITSYSTEM" != "on" ]; then
+  /usr/sbin/sshd -p 22 &
+fi
+
 ldconfig
 useradd -m pi
 gpasswd -a pi video

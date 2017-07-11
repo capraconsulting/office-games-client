@@ -3,7 +3,7 @@ FROM resin/%%RESIN_MACHINE_NAME%%-python:3.6
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -yq --no-install-recommends \
     libusb-1.0-0-dev \
     libudev-dev \
     cec-utils \
@@ -25,7 +25,13 @@ RUN apt-get update && apt-get install -y \
     iceweasel \
     unclutter \
     python-smbus \
+    openssh-server \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir /var/run/sshd \
+    && echo 'root:resin' | chpasswd \
+    && sed -i 's/PermitRootLogin without-password/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && sed -i 's/UsePAM yes/UsePAM no/' /etc/ssh/sshd_config
 
 # Set our working directory
 WORKDIR /usr/src/app
@@ -43,5 +49,4 @@ COPY . ./
 ENV INITSYSTEM on
 
 # main.py will run when container starts up on the device
-# CMD ["python","run.py"]
 CMD ["bash", "scripts/start.sh"]
