@@ -43,7 +43,8 @@ SENSOR_B_REMOVE_POINT_PIN = int(os.environ.get('OG_SENSOR_B_REMOVE_POINT_PIN', 1
 
 # Slack details
 # Notify Slack regarding game events?
-SLACK_MESSAGES_ENABLED = os.environ.get('OG_SLACK_MESSAGES_ENABLED', True)
+SLACK_MESSAGES_ENABLED = os.environ.get('OG_SLACK_MESSAGES_ENABLED', True) == 'True' \
+                         or os.environ.get('OG_SLACK_MESSAGES_ENABLED', True) == 'true'
 SLACK_TOKEN = os.environ.get('OG_SLACK_TOKEN', None)
 SLACK_DEV_CHANNEL = os.environ.get('OG_SLACK_DEV_CHANNEL', '#kontorspill_dev')
 SLACK_CHANNEL = os.environ.get('OG_SLACK_CHANNEL', '#kontorspill')

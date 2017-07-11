@@ -43,9 +43,10 @@ class OfficeGame:
         #    for simplified_player in remote_current_session['players']:
         #        self.get_current_session().add_player(GamePlayer.from_simplified_object(simplified_player))
 
-        # Send a notification to listeners
-        for game_listener in self.game_listeners:
-            game_listener.on_startup()
+        if SLACK_MESSAGES_ENABLED:
+            # Send a notification to listeners
+            for game_listener in self.game_listeners:
+                game_listener.on_startup()
 
     def _get_db(self):
         return self.firebase.database().child('games').child(self.game_slug)
