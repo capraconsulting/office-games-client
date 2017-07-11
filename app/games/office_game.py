@@ -387,7 +387,8 @@ class OfficeGame:
     def get_seconds_left(self):
         return GAME_SESSION_TIME - self.get_current_session().get_seconds_elapsed()
 
-    def register_card(self, card):
+    def register_card(self, physical_path, card):
+        print('physical_path=', physical_path)
         if self._check_pending_card_registration(card):
             return
         try:

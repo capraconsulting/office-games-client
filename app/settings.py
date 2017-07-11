@@ -32,6 +32,14 @@ FIREBASE_CLIENT_X509_CERT_URL = os.environ.get('OG_FIREBASE_CLIENT_X509_CERT_URL
 # Reader details
 READER_VENDOR_ID = os.environ.get('OG_READER_VENDOR_ID', '0xffff')
 READER_PRODUCT_ID = os.environ.get('OG_READER_PRODUCT_ID', '0x0035')
+READER_A_PHYSICAL_PATH = os.environ.get('OG_READER_A_PHYSICAL_PATH', 'usb-3f980000.usb-1.4/input0')
+READER_B_PHYSICAL_PATH = os.environ.get('OG_READER_B_PHYSICAL_PATH', 'usb-3f980000.usb-1.5/input0')
+
+# Sensor (buttons) details
+SENSOR_A_ADD_POINT_PIN = int(os.environ.get('OG_SENSOR_A_ADD_POINT_PIN', 0))
+SENSOR_A_REMOVE_POINT_PIN = int(os.environ.get('OG_SENSOR_A_REMOVE_POINT_PIN', 2))
+SENSOR_B_ADD_POINT_PIN = int(os.environ.get('OG_SENSOR_B_ADD_POINT_PIN', 9))
+SENSOR_B_REMOVE_POINT_PIN = int(os.environ.get('OG_SENSOR_B_REMOVE_POINT_PIN', 11))
 
 # Slack details
 # Notify Slack regarding game events?

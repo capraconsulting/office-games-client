@@ -23,7 +23,7 @@ SCAN_CODES = {
 
 class HIDReader:
     @staticmethod
-    def find_readers(vendor_id, product_id, serial_number):
+    def find_readers(vendor_id, product_id, physical_path):
         try:
             vendor_id = int(vendor_id, 16)
             product_id = int(product_id, 16)
@@ -31,11 +31,11 @@ class HIDReader:
             for port in HIDReader.get_ports():
                 if port.vendor_id == vendor_id \
                         and port.product_id == product_id \
-                        and port.serial_number == serial_number:
+                        and port.phys in physical_path:
                     readers.append(port)
             return readers
         except StopIteration:
-            raise ReaderNotFound(vendor_id, product_id, serial_number)
+            raise ReaderNotFound(vendor_id, product_id, None)
 
     @staticmethod
     def get_ports():
@@ -45,6 +45,7 @@ class HIDReader:
                 path=device.fn,
                 vendor_id=device.info.vendor,
                 product_id=device.info.product,
+                physical_port=device.phys,
                 serial_number=None  # Not supported with evdev
             ))
         return ports
@@ -118,10 +119,16 @@ class HIDReader:
                                         # TODO: Add more checks
                                         if len(data_string) == 8:
                                             for listener in self.reader_listeners:
-                                                listener.handle_card_read(MifareClassicCard(data_string))
+                                                listener.handle_card_read(
+                                                    physical_path=reader_device.phys,
+                                                    card=MifareClassicCard(data_string)
+                                                )
                                         else:
                                             for listener in self.reader_listeners:
-                                                listener.handle_data(data_string)
+                                                listener.handle_card_read(
+                                                    physical_path=reader_device.phys,
+                                                    card=data_string
+                                                )
                                         self.reader_buffer_strings[reader_index] = ''
 
         except Exception as e:
