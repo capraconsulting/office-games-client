@@ -16,6 +16,7 @@ class GameSession:
         }
         self.all_players = []
         self.start_time = None
+        self.active_team_key = None
 
     def __repr__(self):
         return '<GameSession ' \
@@ -67,6 +68,7 @@ class GameSession:
         simplified_teams = {}
         for team in self.teams:
             simplified_teams[team.get_team_key()] = {
+                'ready': team.is_ready(),
                 'points': team.get_points(),
                 'players': team.get_players_simplified()
             }
@@ -87,6 +89,9 @@ class GameSession:
                 return True
         return False
 
+    def has_all_needed_players(self):
+        return len(self.teams[TEAM_A].get_players()) >= 1 and len(self.teams[TEAM_B].get_players()) >= 1
+
     def is_1vs1(self):
         return len(self.teams[TEAM_A].get_players()) == 1 and len(self.teams[TEAM_B].get_players()) == 1
 
@@ -95,9 +100,18 @@ class GameSession:
                (utc_now() - self.all_players[0].get_join_time()).total_seconds() > \
                GAME_PLAYER_REGISTRATION_TIMEOUT
 
+    def get_active_team_key(self):
+        return self.active_team_key
+
+    def set_active_team_key(self, team_key):
+        self.active_team_key = team_key
+
     def has_started(self):
         return self.start_time is not None
 
     def start(self):
         # TODO: beep 3 times with buzzer
         self.start_time = utc_now()
+
+    def are_all_teams_ready(self):
+        return self.teams[TEAM_A].is_ready() and self.teams[TEAM_B].is_ready()

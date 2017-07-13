@@ -3,12 +3,25 @@ class GameTeam:
         self.team_key = team_key
         self.players = {}
         self.points = 0
+        self.ready = False
 
     def get_team_key(self):
         return self.team_key
 
     def get_points(self):
         return self.points
+
+    def add_point(self):
+        self.add_points(1)
+
+    def add_points(self, amount):
+        self.points += amount
+
+    def remove_point(self):
+        self.remove_points(1)
+
+    def remove_points(self, amount):
+        self.points -= amount
 
     def get_players_simplified(self):
         simplified_players = {}
@@ -45,3 +58,9 @@ class GameTeam:
         for slack_user_id, player in self.players:
             rating_group[slack_user_id] = player.get_trueskill_rating()
         return rating_group
+
+    def is_ready(self):
+        return self.is_ready
+
+    def set_ready(self, ready):
+        self.ready = ready

@@ -272,6 +272,7 @@ class OfficeGame:
         session_info = {
             'session_started': self.get_current_session().start_time.isoformat(),
             'session_ended': utc_now().isoformat(),
+            'versus_string': self.get_current_session().get_versus_string(),
             'trueskill_quality': quality([
                 winner_team.get_rating_group(),
                 loser_team.get_rating_group()
@@ -338,6 +339,8 @@ class OfficeGame:
             player_session = {
                 'card_uid': player.get_card().get_uid(),
                 'winner': is_winner,
+                'versus_string': self.get_current_session().get_versus_string(),
+                'team_key': player.get_team_key(),
                 'trueskill_rating': {
                     'mu': {
                         'new': new_trueskill_rating.mu,
@@ -391,11 +394,49 @@ class OfficeGame:
     def get_seconds_left(self):
         return GAME_SESSION_TIME - self.get_current_session().get_seconds_elapsed()
 
+    def _update_team_readiness(self, team_key):
+        if self.get_current_session().has_all_needed_players() \
+                and not self.get_current_session().get_team(team_key).is_ready():
+            self.get_current_session().get_team(team_key).set_ready(True)
+
+            # Update the current session in Firebase (that a team is ready)
+            self._get_db().child('current_session').update({
+                'teams': self.get_current_session().get_teams_simplified()
+            })
+
+            # Are all the teams ready?
+            if self.get_current_session().are_all_teams_ready():
+                self.start_session()
+
     def add_point(self, team_key):
-        pass
+        if self.get_current_session().has_started():
+            # Add 1 point to the team
+            self.get_current_session().get_team(team_key).add_point()
+
+            # Update the current session in Firebase (their points)
+            self._get_db().child('current_session').update({
+                'teams': self.get_current_session().get_teams_simplified()
+            })
+
+            return True
+        self._update_team_readiness(team_key)
+        return False
 
     def remove_point(self, team_key):
-        pass
+        if self.get_current_session().has_started():
+            if self.get_current_session().get_team(team_key).get_points() <= 0:
+                return False
+            # Remove 1 point from the team
+            self.get_current_session().get_team(team_key).remove_point()
+
+            # Update the current session in Firebase (their points)
+            self._get_db().child('current_session').update({
+                'teams': self.get_current_session().get_teams_simplified()
+            })
+
+            return True
+        self._update_team_readiness(team_key)
+        return False
 
     def read_card(self, team_key, card):
         if self._check_pending_card_registration(card):
@@ -439,7 +480,7 @@ class OfficeGame:
             self.get_current_session().add_player(team_key, player)
 
             # Update the current session in Firebase as well
-            self._get_db().child('current_session').set({
+            self._get_db().child('current_session').update({
                 'versus_string': self.get_current_session().get_versus_string(),
                 'teams': self.get_current_session().get_teams_simplified()
             })
