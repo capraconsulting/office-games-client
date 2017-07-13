@@ -20,7 +20,6 @@
 # THE SOFTWARE.
 import time
 
-
 # Register addresses.
 MPR121_I2CADDR_DEFAULT = 0x5A
 MPR121_TOUCHSTATUS_L   = 0x00

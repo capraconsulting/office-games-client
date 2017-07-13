@@ -10,6 +10,12 @@ class SlackListener(GameListener):
     def __init__(self, game):
         super().__init__(game)
 
+    def _format_end_session_player_string(self, player_name, trueskill_rating, trueskill_delta, elo_rating=None, elo_delta=None):
+        player_string = f'{player_name}\nNy Trueskill rating: {trueskill_rating} [{trueskill_delta}]'
+        if elo_rating is not None:
+               player_string += f'\nNy ELO rating: {elo_rating} [{elo_delta}]'
+        return player_string
+
     def _send_message_to_slack(self, message, channel=SLACK_CHANNEL, attachments=None):
         if attachments is not None:
             result = self.game.slack.chat.post_message(
@@ -85,17 +91,38 @@ class SlackListener(GameListener):
             channel=player.get_slack_user_id()
         )
 
-    def on_start_session(self, players):
+    def on_start_session(self, teams, is_1vs1=False):
         message = f'*{self.game.game_name}* - Spill startet'
         fields = []
-        for i in range(len(players)):
+        i = 1
+        for team in teams:
+            title = f'Team {team.get_team_key().upper()}'
+            value = ''
+
+            for slack_user_id, player in team.get_players():
+                if is_1vs1:
+                    title = f'Spiller #{i}'
+                    value += f'{player.to_slack_string()}\n' \
+                             f'ELO Rating: {player.get_elo_rating()}\n' \
+                             f'Trueskill Rating: {player.get_trueskill_rating()}'
+                else:
+                    if value != '':
+                        value += '\n'
+                    value += f'Spiller #{i}\n' \
+                             f'{player.to_slack_string()}\n' \
+                             f'ELO Rating: {player.get_elo_rating()}\n' \
+                             f'Trueskill Rating: {player.get_trueskill_rating()}'
+                i += 1
+
+            if not is_1vs1:
+                i = 1
+
             fields.append({
-                'title': f'Spiller #{i + 1}',
-                'value': f'{players[i].to_slack_string()}\n'
-                         f'ELO Rating: {players[i].get_elo_rating()}\n'
-                         f'Trueskill Rating: {players[i].get_trueskill_rating()}',
+                'title': title,
+                'value': value,
                 'short': True
             })
+
         self._send_message_to_slack(
             message=message,
             attachments=[{
@@ -107,38 +134,75 @@ class SlackListener(GameListener):
             }]
         )
 
-    def on_end_session(self, winner_player, winner_new_elo_rating, winner_new_trueskill_rating,
-                       loser_player, loser_new_elo_rating, loser_new_trueskill_rating):
+    def on_end_session(self, winner_team, loser_team, rated_trueskill_rating_groups, new_elo_ratings=None, is_1vs1=False):
         message = f'*{self.game.game_name}* - Spill ferdig'
-        self._send_message_to_slack(
-            message=message,
-            attachments=[{
-                'fallback': message,
-                'pretext': message,
-                'mrkdwn_in': ['text', 'pretext', 'fields'],
-                'color': 'good',
-                'fields': [
-                    {
-                        'title': 'Vinner',
-                        'value': f'{winner_player.to_slack_string()}\n'
-                                 f'Ny ELO rating: {winner_new_elo_rating} '
-                                 f'[+{winner_new_elo_rating - winner_player.get_elo_rating()}]\n'
-                                 f'Ny Trueskill rating: {winner_new_trueskill_rating.mu} '
-                                 f'[+{winner_new_trueskill_rating.mu - winner_player.get_trueskill_rating().mu}]',
-                        'short': True
-                    },
-                    {
-                        'title': 'Taper',
-                        'value': f'{loser_player.to_slack_string()}\n'
-                                 f'Ny ELO rating: {loser_new_elo_rating} '
-                                 f'[-{loser_player.get_elo_rating() - loser_new_elo_rating}]\n'
-                                 f'Ny Trueskill rating: {loser_new_trueskill_rating.mu} '
-                                 f'[-{loser_player.get_trueskill_rating().mu - loser_new_trueskill_rating.mu}]',
-                        'short': True
-                    }
-                ]
-            }],
-        )
+        if is_1vs1:
+            winner_player = winner_team.get_first_player()
+            winner_new_elo_rating = new_elo_ratings[winner_player.get_slack_user_id()]
+            winner_new_trueskill_rating = rated_trueskill_rating_groups[0][winner_player.get_slack_user_id()]
+            loser_player = loser_team.get_first_player()
+            loser_new_elo_rating = new_elo_ratings[loser_player.get_slack_user_id()]
+            loser_new_trueskill_rating = rated_trueskill_rating_groups[1][loser_player.get_slack_user_id()]
+            self._send_message_to_slack(
+                message=message,
+                attachments=[{
+                    'fallback': message,
+                    'pretext': message,
+                    'mrkdwn_in': ['text', 'pretext', 'fields'],
+                    'color': 'good',
+                    'fields': [
+                        {
+                            'title': 'Vinner',
+                            'value': self._format_end_session_player_string(
+                                player_name=winner_player.to_slack_string(),
+                                trueskill_rating=winner_new_trueskill_rating.mu,
+                                trueskill_delta=f'+{winner_new_trueskill_rating.mu - winner_player.get_trueskill_rating().mu}',
+                                elo_rating=winner_new_elo_rating,
+                                elo_delta=f'+{winner_new_elo_rating - winner_player.get_elo_rating()}'
+                            ),
+                            'short': True
+                        },
+                        {
+                            'title': 'Taper',
+                            'value': self._format_end_session_player_string(
+                                player_name=loser_player.to_slack_string(),
+                                trueskill_rating=loser_new_trueskill_rating.mu,
+                                trueskill_delta=f'-{loser_player.get_trueskill_rating().mu - loser_new_trueskill_rating.mu}',
+                                elo_rating=loser_new_elo_rating,
+                                elo_delta=f'-{loser_player.get_elo_rating() - loser_new_elo_rating}'
+                            ),
+                            'short': True
+                        }
+                    ]
+                }],
+            )
+        else:
+            fields = []
+            for team in [winner_team, loser_team]:
+                is_winner = team.get_team_key() == winner_team.get_team_key()
+
+                value = f'Poeng: {team.get_points()}\n'
+
+                for slack_user_id, player in team.get_players().items():
+                    if is_winner:
+                        player_string = self._format_end_session_player_string(
+                            player_name=player.to_slack_string(),
+                            trueskill_rating=rated_trueskill_rating_groups[0][slack_user_id].mu,
+                            trueskill_delta=f'+{rated_trueskill_rating_groups[0][slack_user_id].mu - player.get_trueskill_rating().mu}'
+                        )
+                    else:
+                        player_string = self._format_end_session_player_string(
+                            player_name=player.to_slack_string(),
+                            trueskill_rating=rated_trueskill_rating_groups[1][slack_user_id].mu,
+                            trueskill_delta=f'-{player.get_trueskill_rating().mu - rated_trueskill_rating_groups[1][slack_user_id].mu}'
+                        )
+                    value += f'\n{player_string}'
+
+                fields.append({
+                    'title': f'{"Vinner" if is_1vs1 else "Taper"} - Team {team.get_team_key().upper()}',
+                    'value': value,
+                    'short': True
+                })
 
     def on_session_timeout(self, session):
         self._send_message_to_slack(message=f'Tiden på økten har løp ut, starter en ny økt!')

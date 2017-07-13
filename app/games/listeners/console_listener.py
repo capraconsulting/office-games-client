@@ -33,14 +33,15 @@ class ConsoleListener(GameListener):
         logger.info(f'Player {player} tried to register to an active session. '
                     f'Please wait {self.game.get_seconds_left()} seconds.')
 
-    def on_start_session(self, players):
-        logger.info(f'New "{self.game.get_name()}" session started with players: {players}')
+    def on_start_session(self, teams, is_1vs1=False):
+        logger.info(f'New "{self.game.get_name()}" session started with teams: {teams}')
 
-    def on_end_session(self, winner_player, winner_new_elo_rating, winner_new_trueskill_rating,
-                       loser_player, loser_new_elo_rating, loser_new_trueskill_rating):
-        logger.info(f'"{self.game.get_name()}" session ended. '
-                    f'Winner: {winner_player} [{winner_new_elo_rating}] [{winner_new_trueskill_rating}]. '
-                    f'Loser: {loser_player} [{loser_new_elo_rating}] [{loser_new_trueskill_rating}]')
+    def on_end_session(self, winner_team, loser_team, rated_trueskill_rating_groups, new_elo_ratings=None, is_1vs1=False):
+        logger.info(f'"{self.game.get_name()}" session ended.\n'
+                    f'Trueskill: {rated_trueskill_rating_groups}\n'
+                    f'Elo ratings: {new_elo_ratings}\n'
+                    f'Winner team: {winner_team}.\n'
+                    f'Loser team: {loser_team}.')
 
     def on_session_timeout(self, session):
         logger.info(f'Session time ran out. Starting a new session! Session that ran out: {session}')

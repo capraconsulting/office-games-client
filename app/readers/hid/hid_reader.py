@@ -23,7 +23,7 @@ SCAN_CODES = {
 
 class HIDReader:
     @staticmethod
-    def find_readers(vendor_id, product_id, physical_path):
+    def find_readers(vendor_id, product_id, physical_paths):
         try:
             vendor_id = int(vendor_id, 16)
             product_id = int(product_id, 16)
@@ -31,7 +31,7 @@ class HIDReader:
             for port in HIDReader.get_ports():
                 if port.vendor_id == vendor_id \
                         and port.product_id == product_id \
-                        and port.phys in physical_path:
+                        and port.phys in physical_paths:
                     readers.append(port)
             return readers
         except StopIteration:
