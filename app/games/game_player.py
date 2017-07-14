@@ -130,7 +130,10 @@ class GamePlayer:
                 'slack_username': self.slack_username,
                 'slack_first_name': self.slack_first_name,
                 'slack_avatar_url': self.slack_avatar_url,
-                'trueskill_rating': self.trueskill_rating,
+                'trueskill_rating': {
+                    'mu': self.trueskill_rating.mu,
+                    'sigma': self.trueskill_rating.sigma,
+                },
                 'elo_rating': self.elo_rating,
                 'total_games': self.total_games,
                 'games_won': self.games_won,
