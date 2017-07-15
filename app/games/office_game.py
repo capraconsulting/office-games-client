@@ -112,8 +112,8 @@ class OfficeGame:
                 sigma=existing_player_statistics['trueskill_rating']['sigma']
             ))
             game_player.set_total_games(existing_player_statistics['total_games'])
-            game_player.set_games_won(existing_player_statistics['games_lost'])
-            game_player.set_games_lost(existing_player_statistics['games_won'])
+            game_player.set_games_won(existing_player_statistics['games_won'])
+            game_player.set_games_lost(existing_player_statistics['games_lost'])
 
         return game_player
 
