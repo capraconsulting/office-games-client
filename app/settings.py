@@ -33,6 +33,9 @@ FIREBASE_CLIENT_X509_CERT_URL = os.environ.get('OG_FIREBASE_CLIENT_X509_CERT_URL
 READER_VENDOR_ID = os.environ.get('OG_READER_VENDOR_ID', '0xffff')
 READER_PRODUCT_ID = os.environ.get('OG_READER_PRODUCT_ID', '0x0035')
 
+# Sentry details
+SENTRY_DSN = os.environ.get('OG_SENTRY_DSN', None)
+
 # Slack details
 # Notify Slack regarding game events?
 SLACK_MESSAGES_ENABLED = os.environ.get('OG_SLACK_MESSAGES_ENABLED', True)
