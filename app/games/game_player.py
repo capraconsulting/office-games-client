@@ -15,7 +15,8 @@ class GamePlayer:
             elo_rating=1200,
             total_games=0,
             games_lost=0,
-            games_won=0
+            games_won=0,
+            seconds_played=0
     ):
         self.card = card
         self.slack_user_id = slack_user_id
@@ -27,6 +28,7 @@ class GamePlayer:
         self.total_games = total_games
         self.games_lost = games_lost
         self.games_won = games_won
+        self.seconds_played = seconds_played
 
     def __repr__(self):
         if self.has_slack_information():
@@ -122,6 +124,15 @@ class GamePlayer:
 
     def increase_games_lost(self):
         self.games_lost += 1
+
+    def get_seconds_played(self):
+        return self.seconds_played
+
+    def set_seconds_played(self, seconds_played):
+        self.seconds_played = seconds_played
+
+    def add_seconds_played(self, seconds):
+        self.seconds_played += seconds
 
     def to_simplified_object(self):
         if self.has_slack_information():

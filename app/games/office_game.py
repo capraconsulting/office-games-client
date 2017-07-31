@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class OfficeGame:
     def __init__(self, game_name, game_version, min_max_card_count=2):
-        self.core_version = '0.2.1'
+        self.core_version = '0.2.2'
         self.game_name = game_name
         self.game_version = game_version
         self.game_slug = slugify(game_name)
@@ -114,6 +114,7 @@ class OfficeGame:
             game_player.set_total_games(existing_player_statistics['total_games'])
             game_player.set_games_won(existing_player_statistics['games_won'])
             game_player.set_games_lost(existing_player_statistics['games_lost'])
+            game_player.set_seconds_played(existing_player_statistics['seconds_played'])
 
         return game_player
 
@@ -216,7 +217,8 @@ class OfficeGame:
                 'elo_rating': 1200,
                 'total_games': 0,
                 'games_won': 0,
-                'games_lost': 0
+                'games_lost': 0,
+                'seconds_played': 0
             })
 
         # Send a notification to listeners
@@ -242,6 +244,7 @@ class OfficeGame:
             game_listener.on_start_session(self.get_current_session().get_players())
 
     def end_session(self, winner_player):
+        end_time = utc_now()
         all_players = self.get_current_session().get_players().copy()
 
         # Remove the winner from the player list and return the first player (loser for now)
@@ -268,7 +271,8 @@ class OfficeGame:
         # Push the current session (which has ended) to the list of sessions in Firebase
         results = self._get_db().child('sessions').push({
             'session_started': self.get_current_session().start_time.isoformat(),
-            'session_ended': utc_now().isoformat(),
+            'session_ended': end_time.isoformat(),
+            'session_seconds': (end_time - self.get_current_session().start_time).total_seconds(),
             'trueskill_quality': quality_1vs1(
                 winner_player.get_trueskill_rating(),
                 loser_player.get_trueskill_rating()
@@ -364,7 +368,9 @@ class OfficeGame:
                 },
                 'total_games': existing_player_statistics['total_games'] + 1,
                 'games_won': existing_player_statistics['games_won'] + (1 if is_winner else 0),
-                'games_lost': existing_player_statistics['games_lost'] + (1 if not is_winner else 0)
+                'games_lost': existing_player_statistics['games_lost'] + (1 if not is_winner else 0),
+                'seconds_played': existing_player_statistics['seconds_played'] + (
+                    end_time - self.get_current_session().start_time).total_seconds()
             })
 
         # Send a notification to listeners

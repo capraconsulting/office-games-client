@@ -109,8 +109,8 @@ class SlackListener(GameListener):
 
     def on_end_session(self, winner_player, winner_new_elo_rating, winner_new_trueskill_rating,
                        loser_player, loser_new_elo_rating, loser_new_trueskill_rating):
-        winner_trueskill_delta = math.floor((winner_player.get_trueskill_rating() - winner_new_trueskill_rating.mu) * 10)
-        loser_trueskill_delta = math.floor((loser_new_trueskill_rating.mu - loser_player.get_trueskill_rating()) * 10)
+        winner_trueskill_delta = math.floor((winner_player.get_trueskill_rating().mu - winner_new_trueskill_rating.mu) * 10)
+        loser_trueskill_delta = math.floor((loser_new_trueskill_rating.mu - loser_player.get_trueskill_rating().mu) * 10)
         message = f'*{self.game.game_name}* - Spill ferdig'
         self._send_message_to_slack(
             message=message,
