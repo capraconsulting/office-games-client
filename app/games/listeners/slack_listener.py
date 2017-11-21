@@ -67,7 +67,7 @@ class SlackListener(GameListener):
                     {
                         'title': f'Spiller #{ len(self.game.current_session.get_players()) }',
                         'value': f'{player.to_slack_string()}\n'
-                                 f'Trueskill Level: {player.get_trueskill_rating().mu * 10}',
+                                 f'Trueskill Level: {math.floor(player.get_trueskill_rating().mu * 10)}',
                         'short': False
                     }
                 ]
@@ -109,7 +109,7 @@ class SlackListener(GameListener):
 
     def on_end_session(self, winner_player, winner_new_elo_rating, winner_new_trueskill_rating,
                        loser_player, loser_new_elo_rating, loser_new_trueskill_rating):
-        winner_trueskill_delta = math.floor((winner_player.get_trueskill_rating().mu - winner_new_trueskill_rating.mu) * 10)
+        winner_trueskill_delta = math.floor((winner_new_trueskill_rating.mu - winner_player.get_trueskill_rating().mu) * 10)
         loser_trueskill_delta = math.floor((loser_new_trueskill_rating.mu - loser_player.get_trueskill_rating().mu) * 10)
         message = f'*{self.game.game_name}* - Spill ferdig'
         self._send_message_to_slack(
@@ -123,15 +123,15 @@ class SlackListener(GameListener):
                     {
                         'title': 'Vinner',
                         'value': f'{winner_player.to_slack_string()}\n'
-                                 f'Ny Trueskill level: {winner_new_trueskill_rating.mu} '
+                                 f'Ny Trueskill level: {math.floor(winner_new_trueskill_rating.mu * 10)} '
                                  f'[+{winner_trueskill_delta}]',
                         'short': True
                     },
                     {
                         'title': 'Taper',
                         'value': f'{loser_player.to_slack_string()}\n'
-                                 f'Ny Trueskill level: {loser_new_trueskill_rating.mu} '
-                                 f'[-{loser_trueskill_delta}]',
+                                 f'Ny Trueskill level: {math.floor(loser_new_trueskill_rating.mu * 10)} '
+                                 f'[{loser_trueskill_delta}]',
                         'short': True
                     }
                 ]
