@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 import pytz
+import dateutil.parser
 from slacker import Slacker
 from slugify import slugify
 from trueskill import Rating, rate_1vs1, quality_1vs1
@@ -51,6 +52,41 @@ class OfficeGame:
     def _get_db(self):
         return self.firebase.database().child('games').child(self.game_slug)
 
+    def _get_slack_information(self, slack_user_id):
+        slack_user_response = self.slack.users.info(slack_user_id)
+        if slack_user_response is None or not slack_user_response.successful:
+            logger.error(slack_user_response.error)
+            return
+        slack_profile = slack_user_response.body['user']['profile']
+        if 'image_512' in slack_profile.keys():
+            avatar_url = slack_profile['image_512']
+        elif 'image_192' in slack_profile.keys():
+            avatar_url = slack_profile['image_192']
+        elif 'image_72' in slack_profile.keys():
+            avatar_url = slack_profile['image_72']
+        else:
+            avatar_url = SLACK_DEFAULT_USER_AVATAR_URL
+
+        return {
+            'slack_username': slack_user_response.body['user']['name'],
+            'slack_first_name': slack_profile['first_name'],
+            'slack_avatar_url': avatar_url
+        }
+
+    def _sync_slack_player(self, game_player):
+        slack_information = self._get_slack_information(game_player.get_slack_user_id())
+        game_player.set_slack_username(slack_information['slack_username'])
+        game_player.set_slack_first_name(slack_information['slack_first_name'])
+        game_player.set_slack_avatar_url(slack_information['slack_avatar_url'])
+        game_player.update_slack_last_sync()
+        self.firebase.database().child('players').child(game_player.get_slack_user_id()).update({
+            'slack_username': game_player.get_slack_username(),
+            'slack_first_name': game_player.get_slack_first_name(),
+            'slack_avatar_url': game_player.get_slack_avatar_url(),
+            'slack_last_sync': game_player.get_slack_last_sync().isoformat()
+        })
+        return game_player
+
     def _check_pending_card_registration(self, card):
         pending_registration = self.firebase.database()\
             .child('pending_registrations')\
@@ -85,23 +121,33 @@ class OfficeGame:
 
         # Initialize the GamePlayer object
         game_player = GamePlayer(card=card)
+        game_player.set_slack_user_id(existing_card['slack_user_id'])
 
         # The card exists and registered to a player, grab the player from the database
         existing_player = self.firebase.database()\
             .child('players')\
-            .child(existing_card['slack_user_id'])\
+            .child(game_player.get_slack_user_id())\
             .get().val()
 
-        # The player exists in the database, add the relevant information to the GamePlayer object
-        game_player.set_slack_user_id(existing_card['slack_user_id'])
-        game_player.set_slack_username(existing_player['slack_username'])
-        game_player.set_slack_first_name(existing_player['slack_first_name'])
-        game_player.set_slack_avatar_url(existing_player['slack_avatar_url'])
+        if 'slack_last_sync' not in existing_player.keys():
+            game_player = self._sync_slack_player(game_player)
+        else:
+            # The player exists in the database, add the relevant information to the GamePlayer object
+            last_sync = dateutil.parser.parse(existing_player['slack_last_sync']).replace(tzinfo=pytz.utc)
+            game_player.set_slack_last_sync(last_sync)
+
+            # Sync Slack information if needed
+            if game_player.should_sync_slack_information():
+                game_player = self._sync_slack_player(game_player)
+            else:
+                game_player.set_slack_username(existing_player['slack_username'])
+                game_player.set_slack_first_name(existing_player['slack_first_name'])
+                game_player.set_slack_avatar_url(existing_player['slack_avatar_url'])
 
         # Check if the player has statistics in the current game_slug
         existing_player_statistics = self._get_db() \
             .child('player_statistics') \
-            .child(existing_card['slack_user_id']) \
+            .child(game_player.get_slack_user_id()) \
             .get().val()
 
         if existing_player_statistics is not None:
@@ -183,26 +229,15 @@ class OfficeGame:
             )
         else:
             # Player does not exist, get the slack information of the user
-            slack_user_response = self.slack.users.info(slack_user_id)
-            if slack_user_response is None or not slack_user_response.successful:
-                logger.error(slack_user_response.error)
-                return
-            slack_profile = slack_user_response.body['user']['profile']
-            if 'image_512' in slack_profile.keys():
-                avatar_url = slack_profile['image_512']
-            elif 'image_192' in slack_profile.keys():
-                avatar_url = slack_profile['image_192']
-            elif 'image_72' in slack_profile.keys():
-                avatar_url = slack_profile['image_72']
-            else:
-                avatar_url = SLACK_DEFAULT_USER_AVATAR_URL
+            slack_information = self._get_slack_information(slack_user_id)
             new_player = {
-                'slack_username': slack_user_response.body['user']['name'],
-                'slack_first_name': slack_profile['first_name'],
-                'slack_avatar_url': avatar_url,
-                'registration_date': utc_now().isoformat(),
-                'cards': {
-                    card.get_uid(): True
+                **slack_information,
+                **{
+                    'slack_last_sync': utc_now().isoformat(),
+                    'registration_date': utc_now().isoformat(),
+                    'cards': {
+                        card.get_uid(): True
+                    }
                 }
             }
 
@@ -211,7 +246,8 @@ class OfficeGame:
                 slack_user_id=slack_user_id,
                 slack_username=new_player['slack_username'],
                 slack_first_name=new_player['slack_first_name'],
-                slack_avatar_url=new_player['slack_avatar_url']
+                slack_avatar_url=new_player['slack_avatar_url'],
+                slack_last_sync=new_player['slack_last_sync']
             )
 
             # Add the new player to the database, with the card added in the card list

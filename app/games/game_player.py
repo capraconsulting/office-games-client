@@ -1,6 +1,8 @@
 from trueskill import Rating
 
 from app.readers.utils.card import NFC_CARD, Card
+from app.settings import SLACK_SYNC_INTERVAL
+from app.utils.time import utc_now
 
 
 class GamePlayer:
@@ -11,6 +13,7 @@ class GamePlayer:
             slack_username=None,
             slack_first_name=None,
             slack_avatar_url=None,
+            slack_last_sync=None,
             trueskill_rating=Rating(),
             elo_rating=1200,
             total_games=0,
@@ -23,6 +26,7 @@ class GamePlayer:
         self.slack_first_name = slack_first_name
         self.slack_username = slack_username
         self.slack_avatar_url = slack_avatar_url
+        self.slack_last_sync = slack_last_sync
         self.trueskill_rating = trueskill_rating
         self.elo_rating = elo_rating
         self.total_games = total_games
@@ -79,6 +83,18 @@ class GamePlayer:
 
     def set_slack_avatar_url(self, slack_avatar_url):
         self.slack_avatar_url = slack_avatar_url
+
+    def get_slack_last_sync(self):
+        return self.slack_last_sync
+
+    def set_slack_last_sync(self, last_sync):
+        self.slack_last_sync = last_sync
+
+    def update_slack_last_sync(self):
+        self.set_slack_last_sync(utc_now())
+
+    def should_sync_slack_information(self):
+        return (utc_now() - self.get_slack_last_sync()).total_seconds() > SLACK_SYNC_INTERVAL
 
     def get_trueskill_rating(self):
         return self.trueskill_rating
