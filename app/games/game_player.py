@@ -191,7 +191,8 @@ class GamePlayer:
 
     def to_slack_string(self):
         if self.has_slack_information():
-            # First name only displays on mobile device in Slack for some reason
-            return f'<@{self.slack_username}|{self.slack_first_name}>'
+            # Slack has changed how they display mentions:
+            # https://api.slack.com/changelog/2017-09-the-one-about-usernames
+            return f'<@{self.get_slack_user_id()}>'
         else:
             return f'Ukjent [{self.card.get_uid()}]'
