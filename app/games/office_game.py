@@ -12,7 +12,8 @@ from app.games.game_session import GameSession
 from app.games.listeners.console_listener import ConsoleListener
 from app.games.listeners.slack_listener import SlackListener
 from app.settings import (GAME_CARD_REGISTRATION_TIMEOUT, GAME_SESSION_TIME,
-                          GAME_START_TIME_BUFFER, SLACK_MESSAGES_ENABLED, SLACK_TOKEN)
+                          GAME_START_TIME_BUFFER, SLACK_MESSAGES_ENABLED, SLACK_TOKEN,
+                          SLACK_DEFAULT_USER_AVATAR_URL)
 from app.utils.elo_rating import calculate_new_rating
 from app.utils.firebase import get_firebase
 from app.utils.time import utc_now
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class OfficeGame:
     def __init__(self, game_name, game_version, min_max_card_count=2):
-        self.core_version = '0.2.2'
+        self.core_version = '0.2.3'
         self.game_name = game_name
         self.game_version = game_version
         self.game_slug = slugify(game_name)
@@ -187,10 +188,18 @@ class OfficeGame:
                 logger.error(slack_user_response.error)
                 return
             slack_profile = slack_user_response.body['user']['profile']
+            if 'image_512' in slack_profile.keys():
+                avatar_url = slack_profile['image_512']
+            elif 'image_192' in slack_profile.keys():
+                avatar_url = slack_profile['image_192']
+            elif 'image_72' in slack_profile.keys():
+                avatar_url = slack_profile['image_72']
+            else:
+                avatar_url = SLACK_DEFAULT_USER_AVATAR_URL
             new_player = {
                 'slack_username': slack_user_response.body['user']['name'],
                 'slack_first_name': slack_profile['first_name'],
-                'slack_avatar_url': slack_profile['image_512'] if 'image_512' in slack_profile else None,
+                'slack_avatar_url': avatar_url,
                 'registration_date': utc_now().isoformat(),
                 'cards': {
                     card.get_uid(): True
