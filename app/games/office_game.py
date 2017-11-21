@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class OfficeGame:
     def __init__(self, game_name, game_version, min_max_card_count=2):
-        self.core_version = '0.2.3'
+        self.core_version = '0.2.4'
         self.game_name = game_name
         self.game_version = game_version
         self.game_slug = slugify(game_name)
