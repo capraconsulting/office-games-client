@@ -17,6 +17,7 @@ pyasn1-modules==0.0.9
 pycryptodome==3.4.3
 Pyrebase==3.0.27
 pyserial==3.3
+python-dateutil==2.6.1
 python-jwt==2.0.1
 pytz==2017.2
 pyusb==1.0.0
