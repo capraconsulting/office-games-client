@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from threading import Event
 
 import pytz
 import dateutil.parser
@@ -10,6 +11,7 @@ from trueskill import Rating, rate_1vs1, quality_1vs1
 from app.games.exceptions import CardExists, UnregisteredCardException
 from app.games.game_player import GamePlayer
 from app.games.game_session import GameSession
+from app.games.game_thread_timer import GameThreadTimer
 from app.games.listeners.console_listener import ConsoleListener
 from app.games.listeners.slack_listener import SlackListener
 from app.settings import (GAME_CARD_REGISTRATION_TIMEOUT, GAME_SESSION_TIME,
@@ -24,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class OfficeGame:
     def __init__(self, game_name, game_version, min_max_card_count=2):
-        self.core_version = '0.2.4'
+        self.core_version = '0.2.5'
         self.game_name = game_name
         self.game_version = game_version
         self.game_slug = slugify(game_name)
@@ -45,12 +47,15 @@ class OfficeGame:
         #    for simplified_player in remote_current_session['players']:
         #        self.get_current_session().add_player(GamePlayer.from_simplified_object(simplified_player))
 
+        # Start the thread timer that checks various options
+        self.stop_flag = Event()
+        self.game_timer = GameThreadTimer(self.stop_flag, self)
+        self.game_timer.start()
+        # self.stop_flag.set()
+
         # Send a notification to listeners
         for game_listener in self.game_listeners:
             game_listener.on_startup()
-
-    def _get_db(self):
-        return self.firebase.database().child('games').child(self.game_slug)
 
     def _get_slack_information(self, slack_user_id):
         slack_user_response = self.slack.users.info(slack_user_id)
@@ -145,7 +150,7 @@ class OfficeGame:
                 game_player.set_slack_avatar_url(existing_player['slack_avatar_url'])
 
         # Check if the player has statistics in the current game_slug
-        existing_player_statistics = self._get_db() \
+        existing_player_statistics = self.get_db() \
             .child('player_statistics') \
             .child(game_player.get_slack_user_id()) \
             .get().val()
@@ -164,6 +169,9 @@ class OfficeGame:
             game_player.set_seconds_played(existing_player_statistics['seconds_played'])
 
         return game_player
+
+    def get_db(self):
+        return self.firebase.database().child('games').child(self.game_slug)
 
     def get_core_version(self):
         return self.core_version
@@ -254,7 +262,7 @@ class OfficeGame:
             self.firebase.database().child('players').child(slack_user_id).set(new_player)
 
             # Add the player to the player statistics of the current game_slug
-            self._get_db().child('player_statistics').child(slack_user_id).set({
+            self.get_db().child('player_statistics').child(slack_user_id).set({
                 'trueskill_rating': {
                     'mu': Rating().mu,
                     'sigma': Rating().sigma,
@@ -276,7 +284,7 @@ class OfficeGame:
         session_players = self.get_current_session().get_players()
 
         # Set the start time of the current session in remote
-        self._get_db().child('current_session').update({
+        self.get_db().child('current_session').update({
             'session_started': self.get_current_session().start_time.isoformat(),
             'trueskill_quality': quality_1vs1(
                 session_players[0].get_trueskill_rating(),
@@ -314,7 +322,7 @@ class OfficeGame:
         )
 
         # Push the current session (which has ended) to the list of sessions in Firebase
-        results = self._get_db().child('sessions').push({
+        results = self.get_db().child('sessions').push({
             'session_started': self.get_current_session().start_time.isoformat(),
             'session_ended': end_time.isoformat(),
             'session_seconds': (end_time - self.get_current_session().start_time).total_seconds(),
@@ -399,13 +407,13 @@ class OfficeGame:
                     }
                 })
 
-            existing_player_statistics = self._get_db()\
+            existing_player_statistics = self.get_db()\
                 .child('player_statistics')\
                 .child(player.get_slack_user_id())\
                 .get().val()
 
             # Set the player statistics
-            self._get_db().child('player_statistics').child(player.get_slack_user_id()).set({
+            self.get_db().child('player_statistics').child(player.get_slack_user_id()).set({
                 'elo_rating': new_elo_rating,
                 'trueskill_rating': {
                     'mu': new_trueskill_rating.mu,
@@ -433,7 +441,7 @@ class OfficeGame:
         self.current_session = GameSession(self.min_max_card_count)
 
         # Reset / remove the remote session
-        self._get_db().child('current_session').remove()
+        self.get_db().child('current_session').remove()
 
     def get_seconds_left(self):
         return GAME_SESSION_TIME - self.get_current_session().get_seconds_elapsed()
@@ -481,7 +489,7 @@ class OfficeGame:
             self.get_current_session().add_player(player)
 
             # Update the current session in Firebase as well
-            self._get_db().child('current_session').set({
+            self.get_db().child('current_session').set({
                 'players': self.get_current_session().get_players_simplified()
             })
 
@@ -498,7 +506,7 @@ class OfficeGame:
                 game_listener.on_unregistered_card_read(card)
 
     def get_current_remote_session(self):
-        return self._get_db().child('current_session').get().val()
+        return self.get_db().child('current_session').get().val()
 
     def has_current_remote_session(self):
         return self.get_current_remote_session() is not None
