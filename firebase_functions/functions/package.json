@@ -1,7 +1,13 @@
 {
   "dependencies": {
     "asyncawait": "^1.0.6",
-    "firebase-admin": "^4.2.1",
-    "firebase-functions": "^0.5.8"
-  }
+    "firebase-admin": "^5.4.3",
+    "firebase-functions": "^0.5.8",
+    "snyk": "^1.110.0"
+  },
+  "scripts": {
+    "snyk-protect": "snyk protect",
+    "prepare": "npm run snyk-protect"
+  },
+  "snyk": true
 }
